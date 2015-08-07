@@ -57,7 +57,7 @@ public class Application {
 
     public Application(int port, String startupChannel, boolean debug, boolean ircSsl, boolean wsSsl) {
         ClientBuilder builder = Client.builder()
-            .server("ipv6.irc.esper.net")
+            .server("irc.esper.net")
             .nick("notBendem")
             .realName("KorobiConcurrent")
             .name("KorobiConcurrent")

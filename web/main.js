@@ -3,30 +3,36 @@
 
     var availableChannels = [];
     var ws;
+    var retries = 0;
     var $channels;
     var $logs;
 
     if(document.readyState === "loading") {
         document.addEventListener("DOMContentLoaded", init);
-    } else if(["interactive", "complete"].indexOf(document.readyState) !== -1) {
+    } else {
         init();
     }
 
     function init() {
-        ws = new WebSocket("wss://" + document.location.hostname + ":8043");
+        initWebSocket();
         $channels = document.getElementById("channels");
         $logs = document.getElementById("logs");
 
-        document.addEventListener('beforeunload', function() {
+        document.addEventListener("beforeunload", function() {
             ws.close(1001);
         });
 
-        $channels.addEventListener('change', function(e) {
-            ws.send(JSON.stringify({
-                _type: "listen_request",
-                channels: getSelected()
-            }));
+        $channels.addEventListener("change", function() {
+            sendChannels();
         });
+    }
+
+    function initWebSocket() {
+        if(connecting) {
+            return;
+        }
+        var connecting = true;
+        ws = new WebSocket("ws://" + document.location.hostname + ":8043");
 
         ws.onmessage = function(e) {
             var data = JSON.parse(e.data);
@@ -48,14 +54,41 @@
                     break;
                 case "unknown":
                 default:
-                    console.warning("unhandled message _type", data._type);
+                    console.warn("unhandled message _type", data._type);
                     break;
             }
-        }
+        };
+
+        ws.onopen = function() {
+            console.log("connected");
+            connecting = false;
+            retries = 0;
+
+            var channels = getSelected();
+            if(channels.length) {
+                sendChannels();
+            }
+        };
+
+        ws.onerror = function(e) {
+            console.error("Connection error", e);
+        };
+
+        ws.onclose = function(e) {
+            if(e.code === 1001 || retries >= 3) {
+                return;
+            }
+
+            connecting = false;
+            // Notification!
+            var time = ++retries * 5000;
+            console.warn("Connection closed, retrying in " + time + "ms", e.code);
+            setTimeout(initWebSocket, time);
+        };
     }
 
     function insertLine(data) {
-        var $line = document.createElement('div');
+        var $line = document.createElement("div");
 
         for(var i in data) {
             if(i[0] === "_") {
@@ -96,6 +129,13 @@
                 selected: selected.indexOf(availableChannels[i]) !== -1,
             }));
         }
+    }
+
+    function sendChannels() {
+        ws.send(JSON.stringify({
+            _type: "listen_request",
+            channels: getSelected()
+        }));
     }
 
     function getSelected() {

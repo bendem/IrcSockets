@@ -2,6 +2,7 @@ package be.bendem.irc.ircsockets;
 
 import be.bendem.irc.ircsockets.ws.protocol.ChannelListMessage;
 import be.bendem.irc.ircsockets.ws.protocol.EventMessage;
+import org.java_websocket.WebSocket;
 import org.kitteh.irc.client.library.element.Actor;
 import org.kitteh.irc.client.library.element.Channel;
 import org.kitteh.irc.client.library.element.MessageReceiver;
@@ -79,6 +80,10 @@ public class EventManager {
                     break;
                 }
                 app.getClient().removeChannel(ch);
+                break;
+
+            case "!close":
+                app.getServer().connections().forEach(WebSocket::close);
                 break;
 
             case "!list":
