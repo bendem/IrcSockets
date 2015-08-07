@@ -32,7 +32,7 @@
             return;
         }
         var connecting = true;
-        ws = new WebSocket("ws://" + document.location.hostname + ":8043");
+        ws = new WebSocket("wss://" + document.location.hostname + ":8043");
 
         ws.onmessage = function(e) {
             var data = JSON.parse(e.data);
