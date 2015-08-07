@@ -1,0 +1,36 @@
+<!doctype html>
+<html>
+    <head>
+        <style>
+        #logs {
+            font-family: monospace;
+        }
+        #logs > div {
+            display: table-row;
+        }
+        #logs > div > span {
+            display: table-cell;
+            padding: 0.2rem 0.3rem;
+            white-space: nowrap;
+        }
+        #logs > div > span:nth-child(3) {
+            text-align: right;
+            border-right: 1px solid #333;
+            min-width: 3ch;
+        }
+        #logs > div > span:last-child {
+            word-break: break-all;
+            word-break: break-word;
+            white-space: pre-wrap;
+        }
+        </style>
+        <script src="main.js" async></script>
+    </head>
+    <body>
+        <h1>Logs</h1>
+        <select id="channels" multiple>
+            <option value="" disabled>Choose channels</option>
+        </select>
+        <div id="logs"></div>
+    </body>
+</html>
