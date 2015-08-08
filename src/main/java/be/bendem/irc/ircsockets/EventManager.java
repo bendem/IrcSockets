@@ -20,15 +20,18 @@ import org.kitteh.irc.client.library.event.user.UserQuitEvent;
 import org.kitteh.irc.lib.net.engio.mbassy.listener.Handler;
 
 import java.util.Optional;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
 public class EventManager {
 
     private final Application app;
+    private final Set<String> userAccounts;
 
-    public EventManager(Application app) {
+    public EventManager(Application app, Set<String> userAccounts) {
         this.app = app;
+        this.userAccounts = userAccounts;
     }
 
     @Handler
@@ -48,7 +51,7 @@ public class EventManager {
             return;
         }
 
-        if(!"bendem".equals(target.getAccount().orElse(""))) {
+        if(!userAccounts.contains(target.getAccount().orElse(""))) {
             return;
         }
 

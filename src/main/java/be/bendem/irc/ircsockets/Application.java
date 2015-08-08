@@ -7,6 +7,8 @@ import org.java_websocket.WebSocketImpl;
 import org.kitteh.irc.client.library.Client;
 import org.kitteh.irc.client.library.ClientBuilder;
 
+import java.util.HashSet;
+import java.util.Set;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 public class Application {
@@ -23,6 +25,7 @@ public class Application {
         boolean ircSsl = true;
         boolean wsSsl = true;
         String startupChannel = "#az";
+        Set<String> userAccounts = new HashSet<>();
 
         for(int i = 0; i < args.length; ++i) {
             switch(args[i]) {
@@ -47,15 +50,19 @@ public class Application {
                 case "-c":
                     startupChannel = args[++i];
                     break;
+                case "--user-account":
+                case "-u":
+                    userAccounts.add(args[++i]);
+                    break;
                 default:
                     System.err.println("Ignored option " + args[i]);
             }
         }
 
-        new Application(port, startupChannel, debug, ircSsl, wsSsl);
+        new Application(port, startupChannel, debug, ircSsl, wsSsl, userAccounts);
     }
 
-    public Application(int port, String startupChannel, boolean debug, boolean ircSsl, boolean wsSsl) {
+    public Application(int port, String startupChannel, boolean debug, boolean ircSsl, boolean wsSsl, Set<String> userAccounts) {
         ClientBuilder builder = Client.builder()
             .server("irc.esper.net")
             .nick("notBendem")
@@ -85,7 +92,7 @@ public class Application {
         if(startupChannel != null) {
             client.addChannel(startupChannel);
         }
-        client.getEventManager().registerEventListener(new EventManager(this));
+        client.getEventManager().registerEventListener(new EventManager(this, userAccounts));
 
         messageQueue = new ConcurrentLinkedQueue<>();
         server = new Server(this, messageQueue, port, wsSsl);
