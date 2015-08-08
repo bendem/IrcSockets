@@ -31,9 +31,7 @@ public class Application {
             switch(args[i]) {
                 case "--port":
                 case "-p":
-                    if(i + 1 == args.length) {
-                        throw new RuntimeException("Dumbass");
-                    }
+                    checkIndex(i, args.length);
                     port = Integer.parseInt(args[++i]);
                     break;
                 case "--debug":
@@ -48,10 +46,12 @@ public class Application {
                     break;
                 case "--channel":
                 case "-c":
+                    checkIndex(i, args.length);
                     startupChannel = args[++i];
                     break;
                 case "--user-account":
                 case "-u":
+                    checkIndex(i, args.length);
                     userAccounts.add(args[++i]);
                     break;
                 default:
@@ -60,6 +60,12 @@ public class Application {
         }
 
         new Application(port, startupChannel, debug, ircSsl, wsSsl, userAccounts);
+    }
+
+    private static void checkIndex(int i, int length) {
+        if(i + 1 == length) {
+            throw new RuntimeException("Missing parameter value");
+        }
     }
 
     public Application(int port, String startupChannel, boolean debug, boolean ircSsl, boolean wsSsl, Set<String> userAccounts) {
