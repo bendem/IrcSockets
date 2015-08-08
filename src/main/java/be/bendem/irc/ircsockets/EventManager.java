@@ -89,6 +89,7 @@ public class EventManager {
             case "!list":
                 String channels = app.getClient().getChannels().stream()
                     .map(Channel::getName)
+                    .sorted()
                     .collect(Collectors.joining(", "));
 
                 channel.map(Function.<MessageReceiver>identity()).orElse(target)
