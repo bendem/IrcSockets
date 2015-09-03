@@ -9,7 +9,8 @@ import org.kitteh.irc.client.library.ClientBuilder;
 
 import java.util.HashSet;
 import java.util.Set;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 public class Application {
 
@@ -98,10 +99,11 @@ public class Application {
         if(startupChannel != null) {
             client.addChannel(startupChannel);
         }
+
         client.getEventManager().registerEventListener(new EventManager(this, userAccounts));
 
-        messageQueue = new ConcurrentLinkedQueue<>();
-        server = new Server(this, messageQueue, port, wsSsl);
+        messageQueue = new LinkedBlockingQueue<>();
+        server = new Server(this, messageQueue, wsPort, wsSsl);
     }
 
     public Client getClient() {

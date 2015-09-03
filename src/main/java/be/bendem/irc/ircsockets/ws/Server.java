@@ -12,9 +12,6 @@ import org.java_websocket.handshake.ClientHandshake;
 import org.java_websocket.server.DefaultSSLWebSocketServerFactory;
 import org.java_websocket.server.WebSocketServer;
 
-import javax.net.ssl.KeyManagerFactory;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.TrustManagerFactory;
 import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.file.Files;
@@ -23,11 +20,14 @@ import java.security.GeneralSecurityException;
 import java.security.KeyStore;
 import java.util.Collections;
 import java.util.Map;
-import java.util.Queue;
 import java.util.Set;
+import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArraySet;
-import java.util.concurrent.TimeUnit;
+
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManagerFactory;
 
 public class Server extends WebSocketServer {
 
@@ -36,7 +36,7 @@ public class Server extends WebSocketServer {
     private final Thread thread;
     private volatile boolean running = true;
 
-    public Server(Application app, Queue<Message> messageQueue, int port, boolean wsSsl) {
+    public Server(Application app, BlockingQueue<Message> messageQueue, int port, boolean wsSsl) {
         super(new InetSocketAddress(port), 2, Collections.emptyList(), new CopyOnWriteArraySet<>());
         this.app = app;
         this.channelWebSocketMap = new ConcurrentHashMap<>();
@@ -58,27 +58,24 @@ public class Server extends WebSocketServer {
 
             while(running) {
                 // TODO Collect and send all at once?
-                while((msg = messageQueue.poll()) != null) {
-                    String json = msg.toJson();
-
-                    if(msg.getTarget().isPresent()) {
-                        // Send to target channel
-                        webSockets = channelWebSocketMap.get(msg.getTarget().get());
-                        if(webSockets == null || webSockets.isEmpty()) {
-                            continue;
-                        }
-
-                        webSockets.forEach(conn -> conn.send(json));
-                    } else {
-                        // Send everywhere
-                        connections().forEach(conn -> conn.send(json));
-                    }
-                }
-
                 try {
-                    TimeUnit.MILLISECONDS.sleep(100);
+                    msg = messageQueue.take();
                 } catch(InterruptedException e) {
-                    e.printStackTrace();
+                    break;
+                }
+                String json = msg.toJson();
+
+                if(msg.getTarget().isPresent()) {
+                    // Send to target channel
+                    webSockets = channelWebSocketMap.getOrDefault(msg.getTarget().get(), Collections.emptySet());
+                    if(webSockets.isEmpty()) {
+                        continue;
+                    }
+
+                    webSockets.forEach(conn -> conn.send(json));
+                } else {
+                    // Send everywhere
+                    connections().forEach(conn -> conn.send(json));
                 }
             }
         });
@@ -112,6 +109,7 @@ public class Server extends WebSocketServer {
 
         try {
             System.out.println("[DEBUG] Joining sending thread");
+            thread.interrupt();
             thread.join();
         } catch(InterruptedException e) {
             e.printStackTrace();
