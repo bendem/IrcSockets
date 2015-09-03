@@ -88,6 +88,11 @@
     }
 
     function insertLine(data) {
+        var moveToBottom = false;
+        if($logs.offsetTop + $logs.offsetHeight < window.innerHeight + window.pageYOffset) {
+            moveToBottom = true;
+        }
+
         var $line = document.createElement("div");
 
         for(var i in data) {
@@ -102,6 +107,10 @@
         }
 
         $logs.appendChild($line);
+
+        if(moveToBottom) {
+            window.scrollBy(0, $line.offsetHeight);
+        }
     }
 
     function createElem(tag, options) {

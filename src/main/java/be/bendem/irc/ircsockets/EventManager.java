@@ -24,6 +24,7 @@ import org.kitteh.irc.lib.net.engio.mbassy.listener.Handler;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -75,18 +76,7 @@ public class EventManager {
 
             case "!leave":
             case "!part":
-                String ch = null;
-                if(channel.isPresent()) {
-                    ch = channel.get().getName();
-                }
-                if(args.length > 1) {
-                    ch = args[1];
-                }
-                if(ch == null) {
-                    target.sendMessage("no channel provided");
-                    break;
-                }
-                app.getClient().removeChannel(ch);
+                execForChannel(channel, args, target, app.getClient()::removeChannel);
                 break;
 
             case "!close":
@@ -103,9 +93,39 @@ public class EventManager {
                     .sendMessage("I'm in " + channels);
                 break;
 
+            case "!spam":
+                execForChannel(channel, args, target, ch -> {
+                    EventMessage yolo = new EventMessage(
+                        Instant.now(),
+                        ch,
+                        "*spam",
+                        "yolo"
+                    );
+                    for(int i = 0; i < 20; ++i) {
+                        app.addMessage(yolo);
+                    }
+                });
+                break;
+
             default:
                 target.sendMessage("invalid command");
                 break;
+        }
+    }
+
+    private void execForChannel(Optional<Channel> channel, String[] args, User target, Consumer<String> action) {
+        String ch = null;
+        if(channel.isPresent()) {
+            ch = channel.get().getName();
+        }
+        if(args.length > 1) {
+            ch = args[1];
+        }
+
+        if(ch == null) {
+            target.sendMessage("no channel provided");
+        } else {
+            action.accept(ch);
         }
     }
 
