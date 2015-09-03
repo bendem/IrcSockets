@@ -6,23 +6,27 @@ import org.java_websocket.WebSocket;
 import org.kitteh.irc.client.library.element.Actor;
 import org.kitteh.irc.client.library.element.Channel;
 import org.kitteh.irc.client.library.element.MessageReceiver;
+import org.kitteh.irc.client.library.element.MessageTag;
 import org.kitteh.irc.client.library.element.User;
+import org.kitteh.irc.client.library.event.channel.ChannelCTCPEvent;
 import org.kitteh.irc.client.library.event.channel.ChannelJoinEvent;
 import org.kitteh.irc.client.library.event.channel.ChannelMessageEvent;
 import org.kitteh.irc.client.library.event.channel.ChannelModeEvent;
 import org.kitteh.irc.client.library.event.channel.ChannelPartEvent;
 import org.kitteh.irc.client.library.event.channel.ChannelTopicEvent;
 import org.kitteh.irc.client.library.event.client.RequestedChannelJoinCompleteEvent;
-import org.kitteh.irc.client.library.event.client.RequestedChannelLeaveEvent;
 import org.kitteh.irc.client.library.event.helper.MessageEvent;
+import org.kitteh.irc.client.library.event.helper.ServerMessageEvent;
 import org.kitteh.irc.client.library.event.user.PrivateMessageEvent;
 import org.kitteh.irc.client.library.event.user.UserQuitEvent;
 import org.kitteh.irc.lib.net.engio.mbassy.listener.Handler;
 
+import java.time.Instant;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class EventManager {
 
@@ -112,15 +116,23 @@ public class EventManager {
     }
 
     @Handler
-    public void onClientPart(RequestedChannelLeaveEvent e) {
+    public void onClientPart(ChannelPartEvent e) {
+        if(!e.getActor().getNick().equals(e.getClient().getNick())) {
+            return;
+        }
         System.out.println("Parted " + e.getChannel().getName());
 
-        app.addMessage(new ChannelListMessage(e.getClient()));
+        Stream<String> channels = e.getClient().getChannels().stream()
+            .filter(c -> c != e.getChannel())
+            .map(Channel::getName);
+
+        app.addMessage(new ChannelListMessage(channels));
     }
 
-    @Handler
+    @Handler(priority = 1) // Receive the message before handling commands
     public void onChannelMessage(ChannelMessageEvent e) {
         app.addMessage(new EventMessage(
+            getEventTime(e),
             e.getChannel(),
             e.getActor(),
             e.getMessage()
@@ -128,8 +140,25 @@ public class EventManager {
     }
 
     @Handler
+    public void onChannelAction(ChannelCTCPEvent e) {
+        if (!e.getMessage().startsWith("ACTION ")) {
+            return;
+        }
+
+        app.addMessage(new EventMessage(
+            getEventTime(e),
+            e.getChannel(),
+            "*",
+            "%s %s",
+            e.getActor().getNick(),
+            e.getMessage().substring("ACTION ".length())
+        ));
+    }
+
+    @Handler
     public void onChannelJoin(ChannelJoinEvent e) {
         app.addMessage(new EventMessage(
+            getEventTime(e),
             e.getChannel(),
             "-->",
             "%s has joined",
@@ -140,6 +169,7 @@ public class EventManager {
     @Handler
     public void onChannelPart(ChannelPartEvent e) {
         app.addMessage(new EventMessage(
+            getEventTime(e),
             e.getChannel(),
             "<--",
             "%s has left (%s)",
@@ -152,6 +182,7 @@ public class EventManager {
     public void onChannelUserQuit(UserQuitEvent e) {
         e.getActor().getChannels().forEach(channel ->
             app.addMessage(new EventMessage(
+                getEventTime(e),
                 channel,
                 "<--",
                 "%s has quit (%s)",
@@ -163,6 +194,7 @@ public class EventManager {
     @Handler
     public void onChannelMode(ChannelModeEvent e) {
         app.addMessage(new EventMessage(
+            getEventTime(e),
             e.getChannel(),
             "---",
             "%s set mode %s",
@@ -178,12 +210,23 @@ public class EventManager {
         }
 
         app.addMessage(new EventMessage(
+            getEventTime(e),
             e.getChannel(),
             "---",
             "%s set topic to '%s'",
             e.getTopic().getSetter().map(Actor::getName).orElse("??"),
             e.getTopic().getValue().orElseGet(() -> "<none>")
         ));
+    }
+
+    private Instant getEventTime(ServerMessageEvent e) {
+        return e.getOriginalMessages().stream()
+            .flatMap(m -> m.getTags().stream())
+                .filter(tag -> tag instanceof MessageTag.Time)
+                .map(tag -> (MessageTag.Time) tag)
+                .findFirst()
+                    .map(MessageTag.Time::getTime)
+                    .orElseGet(Instant::now);
     }
 
 }
