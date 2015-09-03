@@ -18,22 +18,46 @@ public class Application {
 
     private final Client client;
     private final Server server;
-    private final ConcurrentLinkedQueue<Message> messageQueue;
+    private final BlockingQueue<Message> messageQueue;
 
     public static void main(String[] args) {
-        int port = 8043;
+        int wsPort = 8043;
+        int ircPort = 6667;
         boolean debug = false;
         boolean ircSsl = true;
         boolean wsSsl = true;
-        String startupChannel = "#az";
+        String startupChannel = null;
+        String host = null;
+        String username = null;
+        String password = null;
+        String nick = null;
         Set<String> userAccounts = new HashSet<>();
 
         for(int i = 0; i < args.length; ++i) {
             switch(args[i]) {
-                case "--port":
-                case "-p":
+                case "--ws-port":
                     checkIndex(i, args.length);
-                    port = Integer.parseInt(args[++i]);
+                    wsPort = Integer.parseInt(args[++i]);
+                    break;
+                case "--irc-port":
+                    checkIndex(i, args.length);
+                    ircPort = Integer.parseInt(args[++i]);
+                    break;
+                case "--host":
+                    checkIndex(i, args.length);
+                    host = args[++i];
+                    break;
+                case "--username":
+                    checkIndex(i, args.length);
+                    username = args[++i];
+                    break;
+                case "--password":
+                    checkIndex(i, args.length);
+                    password = args[++i];
+                    break;
+                case "--nick":
+                    checkIndex(i, args.length);
+                    nick = args[++i];
                     break;
                 case "--debug":
                 case "-d":
@@ -60,7 +84,7 @@ public class Application {
             }
         }
 
-        new Application(port, startupChannel, debug, ircSsl, wsSsl, userAccounts);
+        new Application(wsPort, startupChannel, debug, ircSsl, wsSsl, ircPort, host, username, password, nick, userAccounts);
     }
 
     private static void checkIndex(int i, int length) {
@@ -69,22 +93,31 @@ public class Application {
         }
     }
 
-    public Application(int port, String startupChannel, boolean debug, boolean ircSsl, boolean wsSsl, Set<String> userAccounts) {
+    public Application(int wsPort, String startupChannel, boolean debug, boolean ircSsl, boolean wsSsl, int ircPort,
+                       String host, String username, String password, String nick, Set<String> userAccounts) {
+        // TODO Nullcheck stuff
         ClientBuilder builder = Client.builder()
-            .server("irc.esper.net")
-            .nick("notBendem")
-            .realName("KorobiConcurrent")
-            .name("KorobiConcurrent")
-            .user("KorobiConcurrent")
+            .server(host)
+            .server(ircPort)
             .listenException(Throwable::printStackTrace);
 
+        if(nick != null) {
+            builder
+                .nick(nick)
+                .realName(nick)
+                .name(nick);
+        }
+
+        if(username != null) {
+            builder.user(username);
+        }
+
+        if(password != null) {
+            builder.serverPassword(password);
+        }
+
         if(ircSsl) {
-            builder
-                .server(6697)
-                .secure(true);
-        } else {
-            builder
-                .server(6667);
+            builder.secure(true);
         }
 
         if(debug) {
